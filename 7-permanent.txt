@@ -1,0 +1,3052 @@
+Skip to content
+You said:
+I assume that you have a sufficiently small principal sub-matrix from a permanent perspective. Is there any way around doing an exact sub-matching or not? And or how can you potentially factor principal minors? I say factor in the sense that you can't avoid completing them, but there is perhaps an efficient way to compute them. Thank you.
+ChatGPT said:
+Request for GPT-5 Pro
+Reasoned for 12m 8s
+Short answer first:
+
+If by “permanent perspective” you mean counting perfect matchings via permanents of principal submatrices: in full generality there is no way around exact sub‑matching—computing a permanent is #P‑complete even for 0–1 matrices, so exact algorithms are exponential‑time in the worst case. The best general exact methods are variants of Ryser/Glynn (≈ 
+O
+(
+k
+ 
+2
+k
+)
+O(k2 
+k
+ ) for a 
+k
+×
+k
+k×k submatrix). There are big speedups if your submatrices have special structure (block‑triangular, planar/Pfaffian, bounded treewidth, etc.) or if you accept approximation (JSV FPRAS for nonnegative entries). 
+Georgia Tech Faculty
++3
+ScienceDirect
++3
+Wikipedia
++3
+
+If by “principal minors” you mean determinants of principal submatrices: those are much friendlier. One factorization identity, useful when you need lots of them, is Jacobi’s complementary minor formula
+
+det
+⁡
+A
+[
+I
+,
+I
+]
+⋅
+det
+⁡
+A
+−
+1
+[
+I
+c
+,
+I
+c
+]
+=
+det
+⁡
+A
+,
+detA[I,I]⋅detA 
+−1
+ [I 
+c
+ ,I 
+c
+ ]=detA,
+which lets you trade a minor of 
+A
+A for a (usually small) minor of 
+A
+−
+1
+A 
+−1
+ . Combined with an LU/LDLᵀ/Cholesky factorization and Schur complements, you can compute many principal minors efficiently without “completing” huge subproblems. 
+MathWorld
++1
+
+Below I break this down into concrete options and “recipes.”
+
+1) Exact counting of sub‑matchings (permanents of principal submatrices)
+What you can’t avoid. In general, computing 
+per
+⁡
+(
+A
+[
+I
+,
+I
+]
+)
+per(A[I,I]) is #P‑complete; no polynomial‑time exact algorithm is expected for arbitrary input. The standard exact algorithms are:
+
+Ryser’s inclusion–exclusion and its refinements (Balasubramanian–Bax–Franklin–Glynn). For a 
+k
+×
+k
+k×k principal submatrix this is 
+O
+(
+k
+ 
+2
+k
+)
+O(k2 
+k
+ ) operations; Glynn’s variant saves about a factor of 2. Good up to 
+k
+≈
+25
+ ⁣
+−
+ ⁣
+30
+k≈25−30 in practice. 
+Wikipedia
+
+Doing all principal permanents naively is hopeless (there are 
+2
+n
+2 
+n
+  of them), but if you must evaluate 
+per
+⁡
+(
+A
+[
+I
+,
+I
+]
+)
+per(A[I,I]) for many 
+I
+I, a usable upper bound is to run a 
+k
+k-row DP for every subset 
+I
+I (columns restricted to 
+I
+I): total work 
+∑
+k
+(
+n
+k
+)
+O
+(
+k
+ 
+2
+k
+)
+=
+O
+(
+n
+ 
+3
+n
+)
+∑ 
+k
+​
+ ( 
+k
+n
+​
+ )O(k2 
+k
+ )=O(n3 
+n
+ ). That’s still exponential, but much better than 
+n
+!
+n! and amenable for 
+n
+n in the low 20s with careful implementation (bitsets/Gray order, etc.). (This is a standard inclusion–exclusion/assignment‑DP trick implied by Ryser.) 
+Wikipedia
+
+When you can beat exponential time (exact):
+
+Block‑upper‑triangular / reducible structure. If a permutation brings your matrix (or submatrix) to block‑upper‑triangular form,
+
+P
+A
+P
+⊤
+=
+[
+B
+1
+∗
+⋯
+0
+B
+2
+⋱
+⋮
+⋱
+⋱
+]
+,
+PAP 
+⊤
+ = 
+​
+  
+B 
+1
+​
+ 
+0
+⋮
+​
+  
+∗
+B 
+2
+​
+ 
+⋱
+​
+  
+⋯
+⋱
+⋱
+​
+  
+​
+ ,
+then any perfect matching must stay inside the diagonal blocks, so
+per
+⁡
+(
+A
+[
+I
+,
+I
+]
+)
+=
+∏
+per
+⁡
+(
+B
+t
+[
+I
+t
+,
+I
+t
+]
+)
+per(A[I,I])=∏per(B 
+t
+​
+ [I 
+t
+​
+ ,I 
+t
+​
+ ]).
+You get this form by a Dulmage–Mendelsohn / block‑triangular decomposition on the bipartite sparsity pattern; it costs essentially linear time in the number of nonzeros and can reduce one large hard permanent into many small ones. 
+Purdue Computer Science
++2
+MathWorks
++2
+
+Planar (or Pfaffian‑orientable) cases. If the induced bipartite graph on 
+I
+∪
+I
+I∪I is planar (or more generally admits a Pfaffian orientation), the number of perfect matchings can be computed in polynomial time via the FKT/Pfaffian method: build a skew‑symmetric Kasteleyn matrix and compute a determinant. For planar subsets that’s typically near‑linear for sparse inputs. 
+Wikipedia
+
+Bounded treewidth. If the induced subgraph has small treewidth 
+t
+t, dynamic programming on a tree decomposition gives exact counts in time roughly 
+O
+∗
+(
+2
+t
+)
+O 
+∗
+ (2 
+t
+ ) (times a polynomial in 
+n
+n). This covers many “nearly tree‑like” structures. 
+ResearchGate
++1
+
+If approximation is acceptable:
+
+JSV FPRAS. For nonnegative entries, there is a fully polynomial randomized approximation scheme (FPRAS) that approximates the permanent within relative error 
+1
+±
+ε
+1±ε in 
+p
+o
+l
+y
+(
+n
+,
+1
+/
+ε
+)
+poly(n,1/ε) time using MCMC with self‑reduction. This applies to each principal submatrix you feed it. 
+Georgia Tech Faculty
+
+Deterministic approximations under assumptions. There are deterministic, provable approximations when entries are, e.g., all close to 1 (Barvinok) or via the capacity method (Gurvits), though the guarantees are weaker (e.g., 
+e
+n
+e 
+n
+ ‑type factors) or hold only in certain regimes. Useful as surrogates or for certificates/bounds. 
+arXiv
++2
+Homes at UW
++2
+
+2) “Factoring” principal minors (determinants) efficiently
+A principal minor is 
+det
+⁡
+A
+[
+I
+,
+I
+]
+detA[I,I]. Here are identities/strategies that avoid recomputing from scratch:
+
+Jacobi’s complementary minors. For invertible 
+A
+A,
+
+det
+⁡
+A
+[
+I
+,
+I
+]
+⋅
+det
+⁡
+A
+−
+1
+[
+I
+c
+,
+I
+c
+]
+=
+det
+⁡
+A
+.
+detA[I,I]⋅detA 
+−1
+ [I 
+c
+ ,I 
+c
+ ]=detA.
+So once you factor 
+A
+A (LU/LDLᵀ/Cholesky), you can compute 
+det
+⁡
+A
+detA once, and then get many 
+det
+⁡
+A
+[
+I
+,
+I
+]
+detA[I,I] cheaply by extracting small principal submatrices of 
+A
+−
+1
+A 
+−1
+  (using, e.g., selected inversion). Especially effective when 
+∣
+I
+∣
+∣I∣ is small or large. 
+MathWorld
+
+Schur‑complement chaining. If 
+J
+⊂
+I
+J⊂I,
+
+det
+⁡
+A
+[
+I
+,
+I
+]
+=
+det
+⁡
+A
+[
+J
+,
+J
+]
+⋅
+det
+⁡
+ ⁣
+(
+A
+/
+A
+[
+J
+,
+J
+]
+ 
+[
+I
+ ⁣
+∖
+ ⁣
+J
+,
+I
+ ⁣
+∖
+ ⁣
+J
+]
+)
+,
+detA[I,I]=detA[J,J]⋅det(A/A[J,J][I∖J,I∖J]),
+so you can build up minors by adding indices and reusing already‑computed Schur complements (one factorization, many queries). This is standard in sparse numerical linear algebra and Gaussian graphical models. 
+Statlect
+
+Block structure (same as for permanents). If a permutation makes 
+A
+[
+I
+,
+I
+]
+A[I,I] block‑upper‑triangular, then
+det
+⁡
+A
+[
+I
+,
+I
+]
+=
+∏
+det
+⁡
+(
+diagonal blocks
+)
+detA[I,I]=∏det(diagonal blocks).
+Use a DM/BTF permutation once, then all principal minors that respect the block structure factor automatically. 
+Purdue Computer Science
++1
+
+Leading principal minors are trivial after factorization. With an LU (or LDLᵀ/Cholesky for SPD) factorization,
+
+det
+⁡
+A
+[
+1
+ ⁣
+:
+ ⁣
+k
+,
+1
+ ⁣
+:
+ ⁣
+k
+]
+=
+∏
+i
+=
+1
+k
+U
+i
+i
+(or the diagonal entries of 
+D
+ for LDLᵀ)
+,
+detA[1:k,1:k]= 
+i=1
+∏
+k
+​
+ U 
+ii
+​
+ (or the diagonal entries of D for LDLᵀ),
+so all leading minors are essentially free once you factor. (This is the standard pivot‑product property.)
+
+Laplacians / all‑minors matrix‑tree theorems. If 
+A
+A is a graph Laplacian, every principal minor counts rooted forests in the graph (Chaiken). This gives fast combinatorial algorithms via determinants of small Laplacians and opens the door to reuse/updates in graph problems. 
+SIAM E-Books
+
+3) Practical “recipes” you can apply
+A. When “the principal submatrix is small” (permanent).
+If the submatrix size is 
+k
+≪
+n
+k≪n:
+
+Restrict to 
+I
+I and run Glynn/Ryser in 
+O
+(
+k
+ 
+2
+k
+)
+O(k2 
+k
+ ). Precompute row‑sums and iterate subsets in Gray order to cut the constant factor. If you need many different 
+I
+I's, the overall work is 
+O
+(
+n
+ 
+3
+n
+)
+O(n3 
+n
+ ) as noted above; cache results per subset size and exploit symmetry. 
+Wikipedia
+
+B. Exploit structural zeros first (permanent and determinant).
+Before any heavy computation:
+
+Compute a block‑triangular form of the sparsity pattern (DM/BTF).
+
+Permanents and determinants then factor across diagonal blocks; solve each block independently, and multiply results. This alone often turns an intractable problem into a set of tractable ones. 
+Purdue Computer Science
++2
+MathWorks
++2
+
+C. If the induced subgraphs are planar (or nearly so).
+Use FKT/Pfaffian to count perfect matchings exactly in polynomial time. If the graph is not planar globally but your 
+I
+I induces a planar subgraph, apply FKT just to that subproblem. 
+Wikipedia
+
+D. If the induced subgraphs have small treewidth.
+Build a tree decomposition (or use one supplied by the application) and run DP over bags. You’ll get exact counts in time 
+O
+∗
+(
+2
+t
+)
+O 
+∗
+ (2 
+t
+ ) for treewidth 
+t
+t. 
+ResearchGate
+
+E. If approximation suffices and entries are nonnegative.
+Run JSV to get 
+(
+1
+±
+ε
+)
+(1±ε) relative‑error estimates in polynomial time per subset—useful when you need many moderately large minors. 
+Georgia Tech Faculty
+
+F. For (determinantal) principal minors at scale.
+
+Factor once (LU/LDLᵀ/Cholesky).
+
+Use Jacobi to flip between 
+A
+A and 
+A
+−
+1
+A 
+−1
+  depending on subset size.
+
+Use Schur complements to update when adding/removing a handful of indices.
+
+If 
+A
+A is SPD and sparse/chordal, exploit the elimination tree/junction‑tree factorization to reuse clique‑separator determinants. 
+MathWorld
++1
+
+4) A note on terminology you used
+“Exact sub‑matching”: if you mean “count perfect matchings inside the induced bipartite subgraph on 
+I
+I”, that is exactly 
+per
+⁡
+(
+A
+[
+I
+,
+I
+]
+)
+per(A[I,I]). The hardness and the remedies above apply. If instead you meant “match exactly a specified subset of vertices while leaving others unmatched,” that becomes a different counting problem (coefficients of the matching polynomial); it’s still #P‑hard in general but admits the same kinds of speedups on planar/low‑treewidth inputs.
+
+“Factor principal minors”: for permanents, you only get clean multiplicative factorization from block‑upper‑triangular/DM structure (or disjoint components). For determinants, you also have Jacobi and Schur‑complement identities that let you compute many minors without explicit expansion. 
+Statlect
++3
+Purdue Computer Science
++3
+Wikipedia
++3
+
+Bottom line
+Permanents (sub‑matchings): Exact in general is exponential; exploit structure (DM factorization, planar/Pfaffian, small treewidth) or use JSV if approximation is acceptable. For “small” principal submatrices, Ryser/Glynn is the workhorse. 
+Georgia Tech Faculty
++4
+Wikipedia
++4
+Purdue Computer Science
++4
+
+Determinantal principal minors: Factorization/identities (Jacobi, Schur complement, block triangular) plus one matrix factorization let you evaluate many minors efficiently. 
+MathWorld
++2
+Statlect
++2
+
+If you can share a bit about your matrices (size, sparsity/planarity, nonnegativity, whether you need all subsets or just a few, and how big “sufficiently small” is), I can map the right recipe to your case and, if helpful, sketch pseudo‑code for the exact DP or the Schur‑complement cache.
+
+You said:
+ok do updated convo recap Formulas, Discussions, Most Natural Way to Establish and Achieve our Stated Goals, etc.Show all formulas, derivations, discuss, alternate between discussion and formulaic treatments. Include exemplars that you can work out locally. It's still unclear that just the cumulant and permanent are enough and or. It's almost like we need some sort of cross matrix of like imminent, cumulant, permanent, determinant, other variants that end in a and t that are fitting that world. Then there are the moments and first various orders of moments. And then there are various types of permanents and related matchings and sort of how to sequence when to do which. It's almost like a decision tree of sorts. And then trying to fit in log DET, trying to fit in union bound, and when we are being FANO. The factor graph, we have positional pilot tones, spectral pilot tones. And keep in mind that we're doing everything in the symbol place space. So for instance, we don't know the models embeddings. We have to do everything by estimating it purely through the symbols we generate or receive. And of course, for many, many natural language problems, a cumulant is probably sufficient. But for certain problems, we do have to do some sort of local permanent or a series of local permanents and alterating back and forth the cumulants. And by embedding inside of our positional and spectral space, we're able to sort of lift everything to what amounts to a low permanent high cumulant manifold and or a low FAFI and high determinant manifold or something of that nature. Because essentially what we're doing is eliminating multiplication and carries and projecting everything into the additive domains. And assume everything. We have CRT lanes. They're co-prime. They're derived from singer sets. They have disjoint, uncoherent symbols and so forth.
+ChatGPT said:
+Request for GPT-5 Pro
+Reasoned for 14m 43s
+Below is a compact but complete “working note” that recaps what we’ve discussed and turns it into a concrete framework you can actually run: definitions, identities, sequencing/decision rules, and toy exemplars I worked out locally.
+
+Two small clarifications. When you wrote “imminent” I’m assuming immanant (a family that interpolates between determinant and permanent). And when you wrote “FAFI,” I’m assuming Pfaffian (whose square is a determinant and which counts perfect matchings on certain graphs).
+
+0) Problem model (recap)
+Discussion.
+We operate entirely in symbol space: no model embeddings. Observations live on a factor graph with:
+
+variable nodes = latent symbols (time/position),
+
+factor nodes = constraints from positional and spectral pilot tones, symbol compatibilities, and local matching constraints (e.g., which observed items could belong to which positions).
+
+lanes come from a CRT decomposition with pairwise coprime moduli; pilot placements follow Singer difference sets to keep lanes incoherent.
+
+We want an inference schedule that mostly uses higher‑order statistics (moments/cumulants) and falls back to small exact combinatorics (local permanents/Pfaffians) where ambiguity remains—plus log‑det and information‑theoretic bounds (union bound, Fano) to control effort and certify when to stop.
+
+1) A “cross‑matrix” of objects and when they help
+Discussion.
+Think of this as a toolbox indexed by what you know (Gaussian vs. non‑Gaussian structure), the graph shape (planar vs. general), and the size of local ambiguity.
+
+Object	Formula (canonical)	What it measures / when to use	Complexity facts	Where it fits here
+Moments	
+m
+k
+=
+E
+[
+X
+k
+]
+m 
+k
+​
+ =E[X 
+k
+ ], joint moments likewise	Raw shape/energy; easy to estimate	Trivial	First diagnostics; feature building blocks
+Cumulants	
+K
+X
+(
+t
+)
+=
+log
+⁡
+E
+[
+e
+t
+X
+]
+K 
+X
+​
+ (t)=logE[e 
+tX
+ ], 
+κ
+k
+=
+K
+X
+(
+k
+)
+(
+0
+)
+κ 
+k
+​
+ =K 
+X
+(k)
+​
+ (0). For zero‑mean: 
+κ
+2
+=
+μ
+2
+κ 
+2
+​
+ =μ 
+2
+​
+ , 
+κ
+3
+=
+μ
+3
+κ 
+3
+​
+ =μ 
+3
+​
+ , 
+κ
+4
+=
+μ
+4
+−
+3
+μ
+2
+2
+κ 
+4
+​
+ =μ 
+4
+​
+ −3μ 
+2
+2
+​
+ . Mixed cumulants vanish across independent groups.	Detect non‑Gaussianity and independence structure; great in symbol space (finite alphabets)	Easy to estimate; additive for independent sums	Primary; use to align/untangle lanes without embeddings
+Determinant / log‑det	
+det
+⁡
+A
+=
+∑
+σ
+s
+g
+n
+(
+σ
+)
+∏
+i
+a
+i
+,
+σ
+(
+i
+)
+detA=∑ 
+σ
+​
+ sgn(σ)∏ 
+i
+​
+ a 
+i,σ(i)
+​
+ ; 
+log
+⁡
+det
+⁡
+logdet for SPD 
+A
+A	Volume/information for Gaussian/quadratic models; D‑optimality; 
+I
+=
+1
+2
+log
+⁡
+det
+⁡
+(
+I
++
+S
+N
+R
+ 
+H
+H
+⊤
+)
+I= 
+2
+1
+​
+ logdet(I+SNRHH 
+⊤
+ )	Polytime (LU/Cholesky); many update identities	Use for Gaussianized subproblems and stopping criteria
+Permanent	
+per
+⁡
+A
+=
+∑
+σ
+∏
+i
+a
+i
+,
+σ
+(
+i
+)
+perA=∑ 
+σ
+​
+ ∏ 
+i
+​
+ a 
+i,σ(i)
+​
+ 	Exactly counts weighted perfect matchings in bipartite subgraphs	#P‑complete; tractable locally (small 
+k
+k), or via structure (planarity/treewidth) or approximation	Use locally when cumulants leave a small combinatorial ambiguity
+Pfaffian	
+P
+f
+(
+K
+)
+2
+=
+det
+⁡
+K
+Pf(K) 
+2
+ =detK for skew‑symmetric 
+K
+K	Exact perfect‑matching count on planar graphs (Kasteleyn), polynomial‑time via determinant	Polytime when the induced graph is Pfaffian‑orientable	Use when local matching is planar (often true on lattice‑like factor graphs)
+Hafnian	
+h
+a
+f
+(
+A
+)
+=
+∑
+perfect pairings
+∏
+A
+i
+j
+j
+j
+haf(A)=∑ 
+perfect pairings
+​
+ ∏A 
+i 
+j
+​
+ j 
+j
+​
+ 
+​
+ 	Perfect matchings in general (non‑bipartite) symmetric graphs	#P‑hard	Niche: when the local factor is a non‑bipartite pairing
+Immanant	
+Imm
+⁡
+χ
+(
+A
+)
+=
+∑
+σ
+∈
+S
+n
+χ
+(
+σ
+)
+∏
+i
+a
+i
+,
+σ
+(
+i
+)
+Imm 
+χ
+​
+ (A)=∑ 
+σ∈S 
+n
+​
+ 
+​
+ χ(σ)∏ 
+i
+​
+ a 
+i,σ(i)
+​
+ 	Family bridging determinant (
+χ
+=
+s
+g
+n
+χ=sgn) and permanent (
+χ
+≡
+1
+χ≡1); can encode cycle‑type biases	#P‑hard in general	A tunable middle ground if you need cycle‑aware weighting
+2) Identities you will actually use (with short derivations)
+Jacobi’s complementary minors (principal case).
+If 
+A
+A is invertible and 
+I
+⊂
+[
+n
+]
+I⊂[n], then
+
+det
+⁡
+A
+[
+I
+,
+I
+]
+=
+det
+⁡
+(
+A
+)
+⋅
+det
+⁡
+ ⁣
+(
+A
+−
+1
+[
+I
+c
+,
+I
+c
+]
+)
+.
+detA[I,I]=det(A)⋅det(A 
+−1
+ [I 
+c
+ ,I 
+c
+ ])
+​
+ .
+Sketch. Jacobi’s theorem gives 
+det
+⁡
+A
+−
+1
+[
+I
+,
+I
+]
+=
+det
+⁡
+A
+[
+I
+c
+,
+I
+c
+]
+/
+det
+⁡
+A
+detA 
+−1
+ [I,I]=detA[I 
+c
+ ,I 
+c
+ ]/detA. Swap 
+I
+↔
+I
+c
+I↔I 
+c
+  and rearrange.
+
+Schur complement factorization.
+Partition 
+A
+=
+[
+A
+I
+I
+A
+I
+J
+A
+J
+I
+A
+J
+J
+]
+A=[ 
+A 
+II
+​
+ 
+A 
+JI
+​
+ 
+​
+  
+A 
+IJ
+​
+ 
+A 
+JJ
+​
+ 
+​
+ ] with 
+A
+I
+I
+A 
+II
+​
+  invertible. Then
+
+det
+⁡
+A
+=
+det
+⁡
+(
+A
+I
+I
+)
+⋅
+det
+⁡
+ ⁣
+(
+A
+/
+A
+I
+I
+)
+,
+A
+/
+A
+I
+I
+=
+A
+J
+J
+−
+A
+J
+I
+A
+I
+I
+−
+1
+A
+I
+J
+.
+detA=det(A 
+II
+​
+ )⋅det(A/A 
+II
+​
+ ),A/A 
+II
+​
+ =A 
+JJ
+​
+ −A 
+JI
+​
+ A 
+II
+−1
+​
+ A 
+IJ
+​
+ .
+Use. Build principal minors incrementally while reusing factorizations.
+
+Matrix determinant lemma.
+For invertible 
+A
+A and vectors 
+u
+,
+v
+u,v,
+
+det
+⁡
+(
+A
++
+u
+v
+⊤
+)
+=
+det
+⁡
+(
+A
+)
+ 
+(
+1
++
+v
+⊤
+A
+−
+1
+u
+)
+,
+log
+⁡
+det
+⁡
+(
+A
++
+u
+v
+⊤
+)
+=
+log
+⁡
+det
+⁡
+A
++
+log
+⁡
+(
+1
++
+v
+⊤
+A
+−
+1
+u
+)
+.
+det(A+uv 
+⊤
+ )=det(A)(1+v 
+⊤
+ A 
+−1
+ u)
+​
+ ,logdet(A+uv 
+⊤
+ )=logdetA+log(1+v 
+⊤
+ A 
+−1
+ u).
+Use. Fast 
+log
+⁡
+det
+⁡
+logdet updates inside greedy selection / message‑passing.
+
+Permanent derivative (local marginals).
+
+∂
+ 
+per
+⁡
+(
+A
+)
+∂
+a
+i
+j
+=
+per
+⁡
+ ⁣
+(
+A
+(
+i
+∣
+j
+)
+)
+,
+∂a 
+ij
+​
+ 
+∂per(A)
+​
+ =per(A 
+(i∣j)
+ )
+​
+ ,
+where 
+A
+(
+i
+∣
+j
+)
+A 
+(i∣j)
+  is 
+A
+A with row 
+i
+i and column 
+j
+j removed.
+Use. The exact “message” from a matching factor to the edge 
+(
+i
+,
+j
+)
+(i,j) is proportional to this minor permanent.
+
+Planar matchings (Pfaffian/Kasteleyn).
+For an oriented planar graph with skew‑symmetric Kasteleyn matrix 
+K
+K,
+
+#
+perfect matchings
+=
+∣
+P
+f
+(
+K
+)
+∣
+=
+det
+⁡
+K
+.
+#perfect matchings= 
+​
+ Pf(K) 
+​
+ = 
+detK
+​
+ .
+Use. Replace exponential permanent with a single determinant when planarity is available.
+
+Moment–cumulant relations (first four).
+Let 
+μ
+k
+=
+E
+[
+X
+k
+]
+μ 
+k
+​
+ =E[X 
+k
+ ]. Then
+
+κ
+1
+=
+μ
+1
+,
+κ
+2
+=
+μ
+2
+−
+μ
+1
+2
+,
+κ
+3
+=
+μ
+3
+−
+3
+μ
+2
+μ
+1
++
+2
+μ
+1
+3
+,
+κ 
+1
+​
+ =μ 
+1
+​
+ ,κ 
+2
+​
+ =μ 
+2
+​
+ −μ 
+1
+2
+​
+ ,κ 
+3
+​
+ =μ 
+3
+​
+ −3μ 
+2
+​
+ μ 
+1
+​
+ +2μ 
+1
+3
+​
+ ,
+κ
+4
+=
+μ
+4
+−
+4
+μ
+3
+μ
+1
+−
+3
+μ
+2
+2
++
+12
+μ
+2
+μ
+1
+2
+−
+6
+μ
+1
+4
+.
+κ 
+4
+​
+ =μ 
+4
+​
+ −4μ 
+3
+​
+ μ 
+1
+​
+ −3μ 
+2
+2
+​
+ +12μ 
+2
+​
+ μ 
+1
+2
+​
+ −6μ 
+1
+4
+​
+ .
+For zero‑mean: 
+κ
+2
+=
+μ
+2
+κ 
+2
+​
+ =μ 
+2
+​
+ , 
+κ
+4
+=
+μ
+4
+−
+3
+μ
+2
+2
+κ 
+4
+​
+ =μ 
+4
+​
+ −3μ 
+2
+2
+​
+ .
+Use. Non‑Gaussianity / independence tests from pure symbols.
+
+Fano’s inequality (multi‑class).
+For 
+X
+∈
+[
+M
+]
+X∈[M] and estimate 
+X
+^
+X
+^
+  from 
+Y
+Y,
+
+H
+(
+P
+e
+)
++
+P
+e
+log
+⁡
+(
+M
+−
+1
+)
+  
+≥
+  
+H
+(
+X
+∣
+Y
+)
+,
+⇒
+P
+e
+  
+≥
+  
+H
+(
+X
+∣
+Y
+)
+−
+1
+log
+⁡
+M
+ (rough, in nats)
+.
+H(P 
+e
+​
+ )+P 
+e
+​
+ log(M−1)≥H(X∣Y),⇒ 
+P 
+e
+​
+ ≥ 
+logM
+H(X∣Y)−1
+​
+ 
+​
+  (rough, in nats).
+Use. Lower‑bound error; decide if more structure (e.g., local permanents) is necessary.
+
+Union bound (ML over codebook).
+If 
+i
+i is transmitted and 
+C
+C has pairwise error probabilities 
+P
+i
+→
+j
+P 
+i→j
+​
+ ,
+
+P
+e
+  
+≤
+  
+∑
+j
+≠
+i
+P
+i
+→
+j
+,
+AWGN/nearest‑neighbor: 
+P
+i
+→
+j
+≈
+Q
+ ⁣
+(
+d
+i
+j
+2
+σ
+)
+.
+P 
+e
+​
+ ≤ 
+j
+
+=i
+∑
+​
+ P 
+i→j
+​
+ 
+​
+ ,AWGN/nearest‑neighbor: P 
+i→j
+​
+ ≈Q( 
+2σ
+d 
+ij
+​
+ 
+​
+ ).
+Use. Upper‑bound error; stop when the bound is comfortably below your target.
+
+CRT lanes and Singer pilots.
+CRT: For coprime 
+m
+1
+,
+…
+,
+m
+r
+m 
+1
+​
+ ,…,m 
+r
+​
+ , 
+ϕ
+:
+Z
+M
+→
+∏
+Z
+m
+ℓ
+ϕ:Z 
+M
+​
+ →∏Z 
+m 
+ℓ
+​
+ 
+​
+  with 
+M
+=
+∏
+m
+ℓ
+M=∏m 
+ℓ
+​
+  is a ring isomorphism—carry‑free per lane.
+Singer set (projective plane of order 
+q
+q): a difference set 
+D
+⊂
+Z
+q
+2
++
+q
++
+1
+D⊂Z 
+q 
+2
+ +q+1
+​
+  of size 
+q
++
+1
+q+1 with each nonzero difference appearing once—spectrally/positionally incoherent pilots.
+
+3) The decision tree (when to use what)
+Start with symbol streams + factor graph + CRT lanes + Singer pilots
+|
++--> (A) Estimate moments/cumulants on sliding windows & across lanes
+|     - If |κ4| (and/or cross-cumulants) >> noise baseline:
+|         --> Use cumulant-based alignment/unmixing (ICA-like updates).
+|             Do NOT invoke matching yet. Go to (E) stopping tests.
+|     - Else:
+|         --> Residual ambiguity likely combinatorial -> go to (B).
+|
++--> (B) Inspect local matching subgraphs (per window/lane-block)
+|     - If planar / near-planar: use Pfaffian (determinant) for exact counts.
+|     - Else if block-structured / small treewidth: do tree DP.
+|     - Else keep k small (k ≤ 12…20) and compute local permanents exactly;
+|         otherwise: approximate (Sinkhorn+Bethe, or MCMC) and continue.
+|
++--> (C) Update beliefs in log-domain (sum-product)
+|     - Use matrix determinant lemma for fast log-det updates in Gaussianized sub-factors.
+|     - Use ∂per/∂a_ij = per(A^{(i|j)}) as exact matching messages when k is small.
+|
++--> (D) Re-gate with cumulants
+|     - After a matching step, recompute cumulants; if they "pop", back off combinatorics.
+|     - Alternate (A)-(B) until either cumulant criteria or matching criteria stabilize.
+|
++--> (E) Stopping / confidence
+      - Upper bound with union bound; lower bound with Fano.
+      - If bounds squeeze target error, stop; else expand window or increase k only locally.
+Heuristic map.
+
+“Low‑permanent / high‑cumulant” manifold: strong non‑Gaussian signatures → lean on cumulants; matching only in sparse tie regions.
+
+“Low‑Pfaffian / high‑determinant” manifold: interactions are pairwise/planar or Gaussianized → use Pfaffian/determinant and log‑det to score/stop.
+
+4) Local exemplars (computed here)
+4.1 Permanents, determinants, Pfaffians on a toy block
+Matrix
+
+A
+=
+[
+1
+2
+0
+0
+1
+3
+2
+0
+1
+]
+A= 
+​
+  
+1
+0
+2
+​
+  
+2
+1
+0
+​
+  
+0
+3
+1
+​
+  
+​
+ 
+det
+⁡
+A
+=
+13
+detA=13.
+
+per
+⁡
+A
+=
+13
+perA=13.
+
+All 
+2
+×
+2
+2×2 principal minors are 
+1
+1.
+
+Jacobi check (principal): for 
+I
+=
+{
+1
+,
+2
+}
+I={1,2},
+
+det
+⁡
+A
+[
+I
+,
+I
+]
+=
+1
+,
+det
+⁡
+A
+−
+1
+[
+I
+c
+,
+I
+c
+]
+=
+1
+13
+,
+det
+⁡
+A
+=
+13
+=
+det
+⁡
+A
+[
+I
+,
+I
+]
+det
+⁡
+A
+−
+1
+[
+I
+c
+,
+I
+c
+]
+.
+detA[I,I]=1,detA 
+−1
+ [I 
+c
+ ,I 
+c
+ ]= 
+13
+1
+​
+ ,detA=13= 
+detA 
+−1
+ [I 
+c
+ ,I 
+c
+ ]
+detA[I,I]
+​
+ .
+Derivative of the permanent (exact matching messages).
+∂
+ 
+per
+⁡
+A
+∂
+a
+i
+j
+=
+per
+⁡
+(
+A
+(
+i
+∣
+j
+)
+)
+∂a 
+ij
+​
+ 
+∂perA
+​
+ =per(A 
+(i∣j)
+ ) gives the table
+
+[
+1
+6
+2
+2
+1
+4
+6
+3
+1
+]
+.
+​
+  
+1
+2
+6
+​
+  
+6
+1
+3
+​
+  
+2
+4
+1
+​
+  
+​
+ .
+These numbers are the exact marginal weights that row 
+i
+i matches column 
+j
+j under the assignment distribution induced by 
+A
+A.
+
+Pfaffian example (planar dimer proxy).
+For
+
+K
+=
+[
+0
+1
+2
+0
+−
+1
+0
+3
+0
+−
+2
+−
+3
+0
+4
+0
+0
+−
+4
+0
+]
+,
+K= 
+​
+  
+0
+−1
+−2
+0
+​
+  
+1
+0
+−3
+0
+​
+  
+2
+3
+0
+−4
+​
+  
+0
+0
+4
+0
+​
+  
+​
+ ,
+P
+f
+(
+K
+)
+=
+4
+Pf(K)=4, 
+det
+⁡
+K
+=
+16
+detK=16, so 
+P
+f
+(
+K
+)
+2
+=
+det
+⁡
+K
+Pf(K) 
+2
+ =detK.
+
+4.2 Information quantities
+Log‑det mutual information (2×2 toy channel).
+With 
+H
+=
+[
+1
+0.3
+0.3
+0.9
+]
+H=[ 
+1
+0.3
+​
+  
+0.3
+0.9
+​
+ ], 
+S
+N
+R
+=
+10
+SNR=10,
+
+I
+=
+1
+2
+log
+⁡
+det
+⁡
+ ⁣
+(
+I
++
+S
+N
+R
+ 
+H
+H
+⊤
+)
+=
+2.2301
+ nats
+=
+3.2174
+ bits
+.
+I= 
+2
+1
+​
+ logdet(I+SNRHH 
+⊤
+ )=2.2301 nats=3.2174 bits.
+Matrix determinant lemma check.
+For SPD 
+S
+S and rank‑1 update 
+u
+v
+⊤
+uv 
+⊤
+ :
+
+det
+⁡
+(
+S
++
+u
+v
+⊤
+)
+=
+det
+⁡
+(
+S
+)
+(
+1
++
+v
+⊤
+S
+−
+1
+u
+)
+det(S+uv 
+⊤
+ )=det(S)(1+v 
+⊤
+ S 
+−1
+ u)
+holds exactly in the numbers I evaluated.
+
+Union bound (nearest‑neighbor AWGN toy).
+Codewords 
+{
+(
+±
+1
+,
+±
+1
+)
+}
+{(±1,±1)}, 
+σ
+=
+0.5
+σ=0.5, for 
+(
+1
+,
+1
+)
+(1,1) transmitted:
+
+P
+e
+ 
+≤
+ 
+Q
+(
+2
+)
+ 
++
+ 
+Q
+(
+2
+)
+ 
++
+ 
+Q
+(
+2
+2
+)
+≈
+0.04784.
+P 
+e
+​
+  ≤ Q(2) + Q(2) + Q(2 
+2
+​
+ )≈0.04784.
+Fano lower bound (8 symbols).
+If 
+H
+(
+X
+∣
+Y
+)
+=
+1.5
+H(X∣Y)=1.5 bits and 
+∣
+X
+∣
+=
+8
+∣X∣=8,
+
+P
+e
+≥
+1.5
+−
+1
+log
+⁡
+2
+8
+=
+0.5
+3
+≈
+0.1667.
+P 
+e
+​
+ ≥ 
+log 
+2
+​
+ 8
+1.5−1
+​
+ = 
+3
+0.5
+​
+ ≈0.1667.
+(When 
+H
+(
+X
+∣
+Y
+)
+≤
+1
+H(X∣Y)≤1 bit the bound is trivial 
+P
+e
+≥
+0
+P 
+e
+​
+ ≥0.)
+
+4.3 CRT lanes and Singer pilot exemplars
+CRT reconstruction (5×7).
+Solve 
+t
+≡
+r
+1
+ 
+(
+m
+o
+d
+ 
+5
+)
+t≡r 
+1
+​
+  (mod 5), 
+t
+≡
+r
+2
+ 
+(
+m
+o
+d
+ 
+7
+)
+t≡r 
+2
+​
+  (mod 7).
+For 
+(
+r
+1
+,
+r
+2
+)
+=
+(
+3
+,
+4
+)
+(r 
+1
+​
+ ,r 
+2
+​
+ )=(3,4) → 
+t
+=
+18
+t=18 in 
+[
+0
+,
+34
+]
+[0,34]; 
+(
+4
+,
+6
+)
+(4,6) → 
+t
+=
+34
+t=34; etc.
+This carry‑free per lane arithmetic is what lets us keep everything additive.
+
+Singer set pilots (q=2).
+In 
+Z
+7
+Z 
+7
+​
+ , 
+D
+=
+{
+0
+,
+1
+,
+3
+}
+D={0,1,3} is a Singer difference set: the multiset of differences 
+{
+d
+−
+d
+′
+:
+d
+≠
+d
+′
+}
+{d−d 
+′
+ :d
+
+=d 
+′
+ } equals 
+{
+1
+,
+2
+,
+3
+,
+4
+,
+5
+,
+6
+}
+{1,2,3,4,5,6} exactly once each.
+Use. Pilot placements from 
+D
+D ensure uniform difference coverage (low coherence) across positions/frequencies.
+
+5) Sequencing the symbol‑only inference (pseudo‑code)
+Inputs: factor graph G, CRT moduli {m_ℓ}, Singer pilots P, windows W
+
+Precompute:
+  - CRT projections: t ↦ (t mod m_ℓ)  for lane alignment (carry-free).
+  - Pilot masks from Singer set (low-coherence anchoring).
+
+For each window w ∈ W:
+  1) Cumulant pass:
+     - Estimate κ2, κ4 (and selected cross-cumulants) per lane and across lanes.
+     - If |κ4| above threshold τ (non-Gaussian “pops”):
+          Update lane alignment/unmixing (ICA-style or cumulant regression).
+          Go to Step 4 (stopping).
+  2) Local matching graph extraction:
+     - Build bipartite subgraph B_w (positions ↔ observations) using pilot gates.
+     - If B_w planar → call Pfaffian; else if small treewidth → tree DP.
+     - Else:
+         If k:=|B_w| ≤ k_max (e.g., 12–20): exact Ryser/Glynn permanent(s).
+         Else: Sinkhorn normalize → Bethe/JSV-style approximation.
+     - Convert ∂per/∂a_ij (=per-minors) into messages on edges (i,j).
+  3) Sum-product step:
+     - Fuse matching messages with pilot/spectral factors in log domain.
+     - Use matrix-determinant lemma to update any Gaussianized sub-factors.
+  4) Stopping checks:
+     - Union bound upper estimate on symbol error for w.
+     - Estimate H(X|Y) (from posteriors) → Fano lower bound.
+     - If both bounds accept target, commit decisions in w; else enlarge w or increase k locally.
+  5) Alternate:
+     - Recompute cumulants on the residual; if now strong, skip matching in next iteration.
+Gating heuristics in practice.
+
+Cumulant‑first unless ambiguous. If 
+∣
+κ
+4
+∣
+∣κ 
+4
+​
+ ∣ (or a cross‑cumulant) jumps above, say, 5–10× the noise floor, you’re safely on the “high‑cumulant” manifold: keep it statistical.
+
+When to invoke permanents: only on the few windows where posterior mass is split and the subgraph is small/structured.
+
+Sinkhorn gauge for ambiguity. Normalize the local affinity matrix 
+A
+A to doubly stochastic (
+B
+B). The van der Waerden range 
+n
+!
+/
+n
+n
+≤
+per
+⁡
+B
+≤
+1
+n!/n 
+n
+ ≤perB≤1 acts as a scale: values near 
+1
+1 mean “almost a permutation” (no need for heavy counting); values near 
+n
+!
+/
+n
+n
+n!/n 
+n
+  mean “high combinatorial ambiguity” (do Pfaffian/permanent).
+
+Toy numbers: after Sinkhorn, a flat 
+4
+×
+4
+4×4 block has 
+per
+⁡
+B
+=
+24
+/
+4
+4
+=
+0.09375
+perB=24/4 
+4
+ =0.09375 (maximally ambiguous). A peaky block gave 
+per
+⁡
+B
+≈
+0.3743
+perB≈0.3743 (much less ambiguous).
+
+6) Where immanants could help
+Discussion.
+Immanants 
+I
+m
+m
+χ
+(
+A
+)
+=
+∑
+σ
+χ
+(
+σ
+)
+∏
+i
+a
+i
+,
+σ
+(
+i
+)
+Imm 
+χ
+​
+ (A)=∑ 
+σ
+​
+ χ(σ)∏ 
+i
+​
+ a 
+i,σ(i)
+​
+  use an irreducible character 
+χ
+χ of 
+S
+n
+S 
+n
+​
+  to reweight cycles of permutations.
+
+If your local compatibility favors particular cycle types (e.g., discouraging long cycles), choosing 
+χ
+χ accordingly can bias the counting toward realistic assignments—sitting between determinant and permanent.
+
+They’re still hard in general, so the practical regime is small 
+k
+k or highly structured blocks.
+
+7) How the pieces support “additive‑domain” symbol inference
+CRT lanes give carry‑free arithmetic and per‑lane decoupling.
+
+Singer pilots supply low‑coherence anchors in both position and spectrum.
+
+Cumulants leverage finite‑alphabet non‑Gaussianity to align and separate without embeddings.
+
+Local permanents / Pfaffians settle the few remaining combinatorial ties, exactly, inside small windows.
+
+Log‑det quantifies geometric information gain and gives fast, stable updates via the determinant lemma.
+
+Union bound & Fano supply outer/inner handles on error to decide when to stop—or when to widen the window/increase 
+k
+k.
+
+Rule of thumb: push as much as possible into cumulants and log‑det (cheap, additive). Spend exponential time only locally and only when ambiguity metrics (e.g., low Sinkhorn‑permanent, flat posterior) say you must.
+
+Quick reference (formulas in one place)
+det
+⁡
+A
+=
+∑
+σ
+s
+g
+n
+(
+σ
+)
+∏
+i
+a
+i
+,
+σ
+(
+i
+)
+detA=∑ 
+σ
+​
+ sgn(σ)∏ 
+i
+​
+ a 
+i,σ(i)
+​
+ 
+
+per
+⁡
+A
+=
+∑
+σ
+∏
+i
+a
+i
+,
+σ
+(
+i
+)
+perA=∑ 
+σ
+​
+ ∏ 
+i
+​
+ a 
+i,σ(i)
+​
+ , 
+∂
+ 
+per
+⁡
+A
+∂
+a
+i
+j
+=
+per
+⁡
+(
+A
+(
+i
+∣
+j
+)
+)
+∂a 
+ij
+​
+ 
+∂perA
+​
+ =per(A 
+(i∣j)
+ )
+
+Imm
+⁡
+χ
+(
+A
+)
+=
+∑
+σ
+χ
+(
+σ
+)
+∏
+i
+a
+i
+,
+σ
+(
+i
+)
+Imm 
+χ
+​
+ (A)=∑ 
+σ
+​
+ χ(σ)∏ 
+i
+​
+ a 
+i,σ(i)
+​
+ 
+
+P
+f
+(
+K
+)
+2
+=
+det
+⁡
+K
+Pf(K) 
+2
+ =detK (skew‑symmetric 
+K
+K)
+
+det
+⁡
+A
+[
+I
+,
+I
+]
+=
+det
+⁡
+A
+⋅
+det
+⁡
+(
+A
+−
+1
+[
+I
+c
+,
+I
+c
+]
+)
+detA[I,I]=detA⋅det(A 
+−1
+ [I 
+c
+ ,I 
+c
+ ]) (Jacobi, principal)
+
+det
+⁡
+A
+=
+det
+⁡
+A
+I
+I
+⋅
+det
+⁡
+(
+A
+/
+A
+I
+I
+)
+detA=detA 
+II
+​
+ ⋅det(A/A 
+II
+​
+ ) (Schur)
+
+det
+⁡
+(
+A
++
+u
+v
+⊤
+)
+=
+det
+⁡
+A
+ 
+(
+1
++
+v
+⊤
+A
+−
+1
+u
+)
+det(A+uv 
+⊤
+ )=detA(1+v 
+⊤
+ A 
+−1
+ u) (rank‑1 lemma)
+
+I
+=
+1
+2
+log
+⁡
+det
+⁡
+(
+I
++
+S
+N
+R
+ 
+H
+H
+⊤
+)
+I= 
+2
+1
+​
+ logdet(I+SNRHH 
+⊤
+ ) (Gaussian MI)
+
+H
+(
+P
+e
+)
++
+P
+e
+log
+⁡
+(
+M
+−
+1
+)
+≥
+H
+(
+X
+∣
+Y
+)
+H(P 
+e
+​
+ )+P 
+e
+​
+ log(M−1)≥H(X∣Y), hence 
+P
+e
+≥
+(
+H
+(
+X
+∣
+Y
+)
+−
+1
+)
+/
+log
+⁡
+M
+P 
+e
+​
+ ≥(H(X∣Y)−1)/logM (Fano)
+
+P
+e
+≤
+∑
+j
+≠
+i
+P
+i
+→
+j
+P 
+e
+​
+ ≤∑ 
+j
+
+=i
+​
+ P 
+i→j
+​
+ , AWGN: 
+P
+i
+→
+j
+≈
+Q
+ ⁣
+(
+d
+i
+j
+/
+(
+2
+σ
+)
+)
+P 
+i→j
+​
+ ≈Q(d 
+ij
+​
+ /(2σ)) (union bound)
+
+Moments→cumulants (first 4): see Section 2 above.
+
+8) What to do next (actionable)
+Instrument the gates. In your code, compute per‑window 
+∣
+κ
+4
+∣
+∣κ 
+4
+​
+ ∣ and the Sinkhorn‑permanent of each local affinity block; this alone drives 80% of the decisions.
+
+Exploit structure first. Try a Dulmage–Mendelsohn/BTF permutation to split blocks; planarity checks route you to Pfaffian/det instead of permanent.
+
+Fix 
+k
+max
+⁡
+k 
+max
+​
+ . Pick a conservative cap (e.g., 
+k
+max
+⁡
+=
+12
+k 
+max
+​
+ =12). Exact permanents only below that; otherwise Pfaffian/DP/approx.
+
+Run in log‑domain. Keep messages as LLRs; use the matrix determinant lemma for any quadratic factors.
+
+Use Fano/union bound to stop. Stop when upper and lower error bounds straddle your target.
+
+If you want, I can turn the decision tree and the exemplar computations above into small, self‑contained pseudo‑code snippets for your stack (or a quick reference PDF).
+
+
+
+
+No file chosenNo file chosen
+ChatGPT can make mistakes. Check important info.
